@@ -44,8 +44,6 @@ def get_run(run_id):
         if not row:
             return None
         d = _row_to_dict(row)
-        from app.services.double_open_serialize import shape_detail
-        d["result"] = shape_detail(d["result"])
         return d
     finally:
         c.close()

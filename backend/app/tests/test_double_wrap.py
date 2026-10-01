@@ -83,3 +83,57 @@ def test_ribbon_unchanged_by_double_layer(db_env):
     off = estimate_service.run_estimate(1, 1.15, "cross", False, "", False, None)
     on = estimate_service.run_estimate(1, 1.15, "cross", False, "", True, 0.8)
     assert on["ribbon"] == off["ribbon"]
+
+
+def test_detail_matches_list_and_persisted_snapshot(db_env):
+    saved = estimate_service.run_estimate(1, 1.15, "cross", True, "", True, 0.5)
+    rid = saved["run_id"]
+
+    detail = history.get_run(rid)["result"]
+    listed = next(r for r in history.list_runs() if r["id"] == rid)["result"]
+    # 详情与列表只认同一份落库快照，不得有任何清零/合并视图残留。
+    assert detail == listed
+    assert detail["double_wrap"] is True
+    assert detail["outer_paper_m2"] == saved["outer_paper_m2"]
+    assert detail["inner_paper_m2"] == saved["inner_paper_m2"] > 0
+    assert detail["total_paper_m2"] == saved["total_paper_m2"]
+    assert detail["total_paper_m2"] == round(
+        detail["outer_paper_m2"] + detail["inner_paper_m2"], 3
+    )
+    assert detail["lining"] == 0.5
+    for stale_key in ("open_inner_dropped", "open_inner_merged", "projection"):
+        assert stale_key not in detail
+
+
+def test_detail_router_has_no_open_projection(db_env):
+    from app.routers import history_router
+
+    saved = estimate_service.run_estimate(1, 1.15, "cross", True, "", True, 0.5)
+    body = history_router.run_detail(saved["run_id"])
+    assert "open_projection" not in body
+    result = body["result"]
+    assert result["inner_paper_m2"] > 0
+    assert result["total_paper_m2"] == round(
+        result["outer_paper_m2"] + result["inner_paper_m2"], 3
+    )
+
+    with pytest.raises(HTTPException) as ei:
+        history_router.run_detail(999999)
+    assert ei.value.status_code == 404
+
+
+def test_detail_single_layer_keeps_legacy_caliber(db_env):
+    saved = estimate_service.run_estimate(1, 1.15, "cross", True, "", False, None)
+    rid = saved["run_id"]
+    detail = history.get_run(rid)["result"]
+    assert detail["double_wrap"] is False
+    assert detail["inner_paper_m2"] == 0.0
+    assert detail["lining"] is None
+    assert detail["total_paper_m2"] == detail["outer_paper_m2"] == detail["paper_m2"]
+
+    # 关双层新单的单层口径不受现行里衬默认影响。
+    settings_repo.upsert("lining_coef", "0.33")
+    pinned = history.get_run(rid)["result"]
+    assert pinned["outer_paper_m2"] == detail["outer_paper_m2"]
+    assert pinned["inner_paper_m2"] == 0.0
+    assert pinned["total_paper_m2"] == detail["total_paper_m2"]
