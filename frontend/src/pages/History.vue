@@ -21,7 +21,7 @@ function fmt(x) {
 <template>
   <div class="page">
     <h1>用纸档</h1>
-    <p class="hint">列表钉写入摘要（inner / total）；详情走开放视图字段。</p>
+    <p class="hint">列表与详情都只认落库快照（outer / inner / total），不随现行默认系数变化。</p>
     <p class="lede">算纸页「写入用纸档」后的落库结果，按次钉住外层、里层与合计；改全局系数不会重算旧档。</p>
     <p v-if="err" class="bad">{{ err }}</p>
     <p v-else-if="!items.length" class="empty">还没有写入过。先去算纸试一单。</p>

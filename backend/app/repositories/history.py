@@ -43,9 +43,8 @@ def get_run(run_id):
         ).fetchone()
         if not row:
             return None
-        d = _row_to_dict(row)
-        from app.services.double_open_serialize import shape_detail
-        d["result"] = shape_detail(d["result"])
-        return d
+        # 详情只能认落库快照：原样返回写入瞬间的 outer/inner/total，
+        # 不按现行里衬默认重算，不清零、不合并里层。
+        return _row_to_dict(row)
     finally:
         c.close()

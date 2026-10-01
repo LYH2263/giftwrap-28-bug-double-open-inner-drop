@@ -1,5 +1,5 @@
 <script setup>
-// open-view: 开放视图：双层标记保留，里层取开放路径
+// 详情只认落库快照：double_wrap 开启时里层面积、合计按写入瞬间原样回显
 
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
